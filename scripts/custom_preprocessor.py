@@ -119,18 +119,18 @@ class ClipVisionModel:
         return outputs
 
 
-def load_448_clipvision_from_sd(sd, prefix="", convert_keys=False):
+def load_512_clipvision_from_sd(sd, prefix="", convert_keys=False):
     if convert_keys:
         sd = convert_to_transformers(sd, prefix)
     if "vision_model.encoder.layers.47.layer_norm1.weight" in sd:
-        json_config = os.path.join(os.path.dirname(os.path.realpath(__file__)), "clip_vision_config_g_448.json")
+        json_config = os.path.join(os.path.dirname(os.path.realpath(__file__)), "clip_vision_config_g_512.json")
     elif "vision_model.encoder.layers.30.layer_norm1.weight" in sd:
-        json_config = os.path.join(os.path.dirname(os.path.realpath(__file__)), "clip_vision_config_h_448.json")
+        json_config = os.path.join(os.path.dirname(os.path.realpath(__file__)), "clip_vision_config_h_512.json")
     elif "vision_model.encoder.layers.22.layer_norm1.weight" in sd:
         if sd["vision_model.embeddings.position_embedding.weight"].shape[0] == 577:
             json_config = os.path.join(os.path.dirname(os.path.realpath(__file__)), "clip_vision_config_vitl_336.json")
         else:
-            json_config = os.path.join(os.path.dirname(os.path.realpath(__file__)), "clip_vision_config_vitl_448.json")
+            json_config = os.path.join(os.path.dirname(os.path.realpath(__file__)), "clip_vision_config_vitl_512.json")
     else:
         return None
 
@@ -147,7 +147,7 @@ def load_448_clipvision_from_sd(sd, prefix="", convert_keys=False):
     return clip
 
 
-def extend_clipvision_input_size(state_dict, target_size=448):
+def extend_clipvision_input_size(state_dict, target_size=512):
     square_patch_count = state_dict['vision_model.embeddings.patch_embedding.weight'].shape[2]
     original_dtype = state_dict['vision_model.embeddings.patch_embedding.weight'].dtype
     pos_embedding = torch.unsqueeze(
@@ -187,16 +187,16 @@ class CustomPreprocessorClipVisionForIPAdapter(PreprocessorClipVision):
             model_dir=preprocessor_dir,
             file_name=self.filename
         )
-        ckpt_hash = ckpt_path + '.448'
+        ckpt_hash = ckpt_path + '.512'
         if ckpt_hash in PreprocessorClipVision.global_cache:
             self.clipvision = PreprocessorClipVision.global_cache[ckpt_hash]
         else:
             sd = load_torch_file(ckpt_path)
-            sd = extend_clipvision_input_size(sd, 448)
+            sd = extend_clipvision_input_size(sd, 512)
             if "visual.transformer.resblocks.0.attn.in_proj_weight" in sd:
-                self.clipvision = load_448_clipvision_from_sd(sd, prefix="visual.", convert_keys=True)
+                self.clipvision = load_512_clipvision_from_sd(sd, prefix="visual.", convert_keys=True)
             else:
-                self.clipvision = load_448_clipvision_from_sd(sd)
+                self.clipvision = load_512_clipvision_from_sd(sd)
             PreprocessorClipVision.global_cache[ckpt_hash] = self.clipvision
 
         # Set up the model patcher for the CLIP vision model
@@ -206,13 +206,7 @@ class CustomPreprocessorClipVisionForIPAdapter(PreprocessorClipVision):
 
 
 add_supported_preprocessor(CustomPreprocessorClipVisionForIPAdapter(
-    name='CLIP-ViT-bigG-448 (IPAdapter)',
+    name='CLIP-ViT-bigG-512 (IPAdapter)',
     url='https://huggingface.co/h94/IP-Adapter/resolve/main/sdxl_models/image_encoder/model.safetensors',
     filename='CLIP-ViT-bigG.safetensors'
-))
-
-add_supported_preprocessor(CustomPreprocessorClipVisionForIPAdapter(
-    name='CLIP-ViT-H-448 (IPAdapter)',
-    url='https://huggingface.co/h94/IP-Adapter/resolve/main/models/image_encoder/model.safetensors',
-    filename='CLIP-ViT-H-14.safetensors'
 ))
